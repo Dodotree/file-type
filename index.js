@@ -1,22 +1,12 @@
-'use strict';
-const toBytes = s => Array.from(s).map(c => c.charCodeAt(0));
-const xpiZipFilename = toBytes('META-INF/mozilla.rsa');
-const oxmlContentTypes = toBytes('[Content_Types].xml');
-const oxmlRels = toBytes('_rels/.rels');
-
-module.exports = input => {
-	const buf = (input instanceof Uint8Array) ? input : new Uint8Array(input);
-
-	if (!(buf && buf.length > 1)) {
-		return null;
-	}
-
-	const check = (header, options) => {
+function checkType(buf){
+	if (!(buf && buf.length > 1)) { return null; }
+	
+	var check = function(header, options){
 		options = Object.assign({
 			offset: 0
 		}, options);
 
-		for (let i = 0; i < header.length; i++) {
+		for (var i = 0; i < header.length; i++) {
 			// If a bitmask is set
 			if (options.mask) {
 				// If header doesn't equal `buf` with bits masked off
@@ -27,12 +17,12 @@ module.exports = input => {
 				return false;
 			}
 		}
-
-		return true;
+	return true;
 	};
-
-	const checkString = (header, options) => check(toBytes(header), options);
-
+	
+	var checkString = function(header, options){ return check(toBytes(header), options); };
+	
+	
 	if (check([0xFF, 0xD8, 0xFF])) {
 		return {
 			ext: 'jpg',
@@ -122,6 +112,7 @@ module.exports = input => {
 			};
 		}
 
+		var xpiZipFilename = toBytes('META-INF/mozilla.rsa');
 		// Assumes signed `.xpi` from addons.mozilla.org
 		if (check(xpiZipFilename, {offset: 30})) {
 			return {
@@ -151,18 +142,25 @@ module.exports = input => {
 			};
 		}
 
+		var oxmlContentTypes = toBytes('[Content_Types].xml');
+		var oxmlRels = toBytes('_rels/.rels');
 		// https://github.com/file/file/blob/master/magic/Magdir/msooxml
 		if (check(oxmlContentTypes, {offset: 30}) || check(oxmlRels, {offset: 30})) {
-			const sliced = buf.subarray(4, 4 + 2000);
-			const nextZipHeaderIndex = arr => arr.findIndex((el, i, arr) => arr[i] === 0x50 && arr[i + 1] === 0x4B && arr[i + 2] === 0x3 && arr[i + 3] === 0x4);
-			const header2Pos = nextZipHeaderIndex(sliced);
+			var sliced = buf.subarray(4, 4 + 2000);
+			var is_seq = function(el, i, arr){ 
+					return arr[i] === 0x50 && arr[i + 1] === 0x4B && arr[i + 2] === 0x3 && arr[i + 3] === 0x4;
+				};			
+			var nextZipHeaderIndex = function(arr){
+				arr.findIndex( is_seq );
+			}
+			var header2Pos = nextZipHeaderIndex(sliced);
 
 			if (header2Pos !== -1) {
-				const slicedAgain = buf.subarray(header2Pos + 8, header2Pos + 8 + 1000);
-				const header3Pos = nextZipHeaderIndex(slicedAgain);
+				var slicedAgain = buf.subarray(header2Pos + 8, header2Pos + 8 + 1000);
+				var header3Pos = nextZipHeaderIndex(slicedAgain);
 
 				if (header3Pos !== -1) {
-					const offset = 8 + header2Pos + header3Pos + 30;
+					var offset = 8 + header2Pos + header3Pos + 30;
 
 					if (checkString('word/', {offset})) {
 						return {
@@ -273,12 +271,14 @@ module.exports = input => {
 
 	// https://github.com/threatstack/libmagic/blob/master/magic/Magdir/matroska
 	if (check([0x1A, 0x45, 0xDF, 0xA3])) {
-		const sliced = buf.subarray(4, 4 + 4096);
-		const idPos = sliced.findIndex((el, i, arr) => arr[i] === 0x42 && arr[i + 1] === 0x82);
+		var sliced = buf.subarray(4, 4 + 4096);
+		var idPos = sliced.findIndex((el, i, arr) => arr[i] === 0x42 && arr[i + 1] === 0x82);
 
 		if (idPos !== -1) {
-			const docTypePos = idPos + 3;
-			const findDocType = type => Array.from(type).every((c, i) => sliced[docTypePos + i] === c.charCodeAt(0));
+			var docTypePos = idPos + 3;
+			var findDocType = function(type){
+				return Array.from(type).every( function(c, i){ return sliced[docTypePos + i] === c.charCodeAt(0); } );
+			};
 
 			if (findDocType('matroska')) {
 				return {
@@ -723,5 +723,6 @@ module.exports = input => {
 		};
 	}
 
-	return null;
-};
+return null;
+}
+
