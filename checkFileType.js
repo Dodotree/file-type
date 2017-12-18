@@ -1,5 +1,18 @@
+define([
+], function(){
+
+// .obj and .mtl files will return null
+
+var toBytes = function(s){ return Array.from(s).map(c => c.charCodeAt(0)); };
+
 function checkType(buf){
-	if (!(buf && buf.length > 1)) { return null; }
+
+    // buffer to array if not already
+    buf = (buf instanceof Uint8Array) ? buf : new Uint8Array(buf);
+
+	if (!(buf && buf.length > 1)) { 
+        return null; 
+    }
 	
 	var check = function(header, options){
 		options = Object.assign({
@@ -724,5 +737,10 @@ function checkType(buf){
 	}
 
 return null;
-}
+};
+
+
+
+return checkType;
+});
 
